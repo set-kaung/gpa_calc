@@ -43,6 +43,27 @@
     }, 0),
   );
 
+  let calculationString = $derived.by(() => {
+    const terms: string[] = [];
+    let countedCredits = 0;
+
+    for (const subject of subjects) {
+      const credit = Number(subject.credit);
+      const point = gpaToCreditMapping[subject.grade];
+
+      if (!Number.isFinite(credit) || credit <= 0 || point === undefined) {
+        continue;
+      }
+
+      terms.push(`(${point} * ${credit})`);
+      countedCredits += credit;
+    }
+
+    return countedCredits > 0
+      ? `[${terms.join(" + ")}] / ${countedCredits}`
+      : "";
+  });
+
   let gpa = $derived.by(() => {
     let totalGradePoints = 0;
     let countedCredits = 0;
@@ -91,6 +112,9 @@
     <p>Total credits = {totalCredits}</p>
     {#if gpa > 0}
       <p>GPA = {gpa}</p>
+      <p class="formula-show">
+        How it is calculated: <br /><span>{calculationString}</span>
+      </p>
     {/if}
   </div>
 </main>
@@ -139,6 +163,13 @@
     background-color: rgb(14, 126, 255);
     border-radius: 0.5rem;
     color: white;
-    font-size: 2rem;
+    font-size: 1.5rem;
+  }
+
+  .formula-show {
+    margin-top: 0.5rem;
+  }
+  .formula-show span {
+    font-size: 1.25rem;
   }
 </style>
