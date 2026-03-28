@@ -1,0 +1,144 @@
+<script lang="ts">
+  import Subject from "./lib/Subject.svelte";
+  type SubjectData = {
+    id: number;
+    name?: string;
+    credit: number;
+    grade: string;
+  };
+  const gpaToCreditMapping: Record<string, number> = {
+    A: 4,
+    "A-": 3.75,
+    "B+": 3.5,
+    B: 3,
+    "B-": 2.75,
+    "C+": 2.5,
+    C: 2,
+    "C-": 1.75,
+    D: 1,
+    F: 0,
+  };
+  let subjects: SubjectData[] = $state([]);
+  let countOfSubjects = $state(0);
+
+  function addSubject() {
+    countOfSubjects += 1;
+    let x = countOfSubjects;
+    subjects.push({
+      id: x,
+      name: "",
+      credit: 3,
+      grade: "A",
+    });
+  }
+  function removeSubject(id: number) {
+    subjects = subjects.filter((x) => x.id != id);
+    countOfSubjects = subjects.length;
+  }
+
+  let totalCredits = $derived(
+    subjects.reduce((acc, cv) => {
+      const credit = Number(cv.credit);
+      return Number.isFinite(credit) && credit > 0 ? acc + credit : acc;
+    }, 0),
+  );
+
+  let gpa = $derived.by(() => {
+    let totalGradePoints = 0;
+    let countedCredits = 0;
+
+    for (const subject of subjects) {
+      const credit = Number(subject.credit);
+      const point = gpaToCreditMapping[subject.grade];
+
+      if (!Number.isFinite(credit) || credit <= 0 || point === undefined) {
+        continue;
+      }
+
+      totalGradePoints += point * credit;
+      countedCredits += credit;
+    }
+
+    return countedCredits > 0
+      ? Number((totalGradePoints / countedCredits).toFixed(2))
+      : 0;
+  });
+</script>
+
+<main>
+  <h1>GPA calculator</h1>
+  <p>An easy to use, customizable GPA calculator</p>
+  <div class="subject-input">
+    <ul>
+      {#each subjects as sub (sub.id)}
+        <li>
+          <Subject
+            id={sub.id}
+            bind:name={sub.name}
+            bind:credit={sub.credit}
+            bind:grade={sub.grade}
+          /><button
+            onclick={() => {
+              removeSubject(sub.id);
+            }}>Delete</button
+          >
+        </li>
+      {/each}
+      <button onclick={addSubject}>+</button>
+    </ul>
+  </div>
+  <div class="result">
+    <p>Total credits = {totalCredits}</p>
+    {#if gpa > 0}
+      <p>GPA = {gpa}</p>
+    {/if}
+  </div>
+</main>
+
+<style>
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+  }
+
+  .subject-input {
+    margin: 1.5rem 0rem;
+    padding: 1.25rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid black;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  li {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  ul button {
+    font-size: 1.35rem;
+    padding: 0.25rem 8rem;
+    border: none;
+  }
+  li button {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0.5rem 1rem;
+  }
+
+  .result {
+    padding: 1rem;
+    background-color: rgb(14, 126, 255);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 2rem;
+  }
+</style>
