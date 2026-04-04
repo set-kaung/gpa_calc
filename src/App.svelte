@@ -9,10 +9,10 @@
   const gpaToCreditMapping: Record<string, number> = {
     A: 4,
     "A-": 3.75,
-    "B+": 3.5,
+    "B+": 3.25,
     B: 3,
     "B-": 2.75,
-    "C+": 2.5,
+    "C+": 2.25,
     C: 2,
     "C-": 1.75,
     D: 1,
@@ -65,8 +65,25 @@
   });
 
   let gpa = $derived.by(() => {
+    // Kahan summation reduces floating-point accumulation error for long subject lists.
     let totalGradePoints = 0;
+    let gradePointsCompensation = 0;
     let countedCredits = 0;
+    let creditsCompensation = 0;
+
+    const addGradePoints = (value: number) => {
+      const y = value - gradePointsCompensation;
+      const t = totalGradePoints + y;
+      gradePointsCompensation = t - totalGradePoints - y;
+      totalGradePoints = t;
+    };
+
+    const addCredits = (value: number) => {
+      const y = value - creditsCompensation;
+      const t = countedCredits + y;
+      creditsCompensation = t - countedCredits - y;
+      countedCredits = t;
+    };
 
     for (const subject of subjects) {
       const credit = Number(subject.credit);
@@ -76,14 +93,14 @@
         continue;
       }
 
-      totalGradePoints += point * credit;
-      countedCredits += credit;
+      addGradePoints(point * credit);
+      addCredits(credit);
     }
 
-    return countedCredits > 0
-      ? Number((totalGradePoints / countedCredits).toFixed(2))
-      : 0;
+    return countedCredits > 0 ? totalGradePoints / countedCredits : 0;
   });
+
+  let gpaDisplay = $derived(gpa > 0 ? gpa.toFixed(2) : "0.00");
 </script>
 
 <main>
@@ -111,7 +128,7 @@
   <div class="result">
     <p>Total credits = {totalCredits}</p>
     {#if gpa > 0}
-      <p>GPA = {gpa}</p>
+      <p>GPA = {gpaDisplay}</p>
       <p class="formula-show">
         How it is calculated: <br /><span>{calculationString}</span>
       </p>
@@ -171,5 +188,9 @@
   }
   .formula-show span {
     font-size: 1.25rem;
+  }
+  span {
+    width: 10ch;
+    overflow: auto;
   }
 </style>
